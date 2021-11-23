@@ -7,7 +7,7 @@
 #Output: Best Action at each state
 #----------------------------------------------------------------------------------
 
-include('main.jl')
+include("main.jl")
 
 #Define Q-Learning Variable
 mutable struct QLearning
@@ -18,5 +18,23 @@ mutable struct QLearning
     α
 end
 
-model=MDP(S)
 #Update Action Value function
+function update!(model,s,a,r,sp)
+    γ, Q, α = model.γ, model.Q, model.α
+    Q[s,a]+=α*(r+γ*maximum(Q[s',:])-Q[s,a])
+    return model
+end
+
+#Define Additional Variables
+α=0.3;
+Q=zeros(length(𝒫.𝒮),length(𝒫.𝒜));
+k=20;
+
+#Define the Q-Learning Model
+model=QLearning(𝒫.𝒮, 𝒫.𝒜, 𝒫.γ, Q, α);
+
+for i in 1:k #Experience Replay
+    for j in 1:row #rows in Dataset
+        update!(model,D[j,1],D[j,2],D[j,3],D[j,4])
+    end
+end
