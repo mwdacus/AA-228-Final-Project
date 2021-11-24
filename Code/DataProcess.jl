@@ -51,3 +51,7 @@ function Discretize(D,sarsp)
 end
 
 #Output the sarsp's for each quarter:
+sarsp_q1=Discretize(D1,sarsp_q1)
+sarsp_q2=Discretize(D2,sarsp_q2)
+sarsp_q3=Discretize(D3,sarsp_q3)
+sarsp_q4=Discretize(D4,sarsp_q4)
