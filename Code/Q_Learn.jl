@@ -7,7 +7,7 @@
 #Output: Best Action at each state
 #----------------------------------------------------------------------------------
 
-include("main.jl")
+include("MDP.jl")
 
 #Define Q-Learning Variable
 mutable struct QLearning
