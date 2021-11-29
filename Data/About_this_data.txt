@@ -1,0 +1,6 @@
+2pt Offensive Percentage and 2pt Defensive Percentage from: Teamrankings.com
+https://www.teamrankings.com/nfl/stat/two-point-conversion-pct?date=2021-02-08
+https://www.teamrankings.com/nfl/stat/opponent-two-point-conversion-pct?date=2021-02-07
+
+FG Xp Percentage from: https://www.pro-football-reference.com/
+Note: Percentages are inclusive of all attempts by any kickers on the team in the 2020 season.
