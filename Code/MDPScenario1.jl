@@ -107,7 +107,7 @@ end
 	plot!(p_home_two,v_two[2,:],label="p_stop=0.4")
 	plot!(p_home_two,v_two[3,:],label="p_stop=0.6")
 	plot!(p_home_two,v_two[4,:],label="p_stop=0.8")
-	xlabel!("probability of making extra point")
+	xlabel!("probability of making two point conversion")
 	ylabel!("value")
 
 
