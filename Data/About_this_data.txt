@@ -4,3 +4,6 @@ https://www.teamrankings.com/nfl/stat/opponent-two-point-conversion-pct?date=202
 
 FG Xp Percentage from: https://www.pro-football-reference.com/
 Note: Percentages are inclusive of all attempts by any kickers on the team in the 2020 season.
+
+TD Percentage from: Sharp Football Analysis
+https://www.sharpfootballanalysis.com/fantasy/fantasy-football-examining-team-scoring-output-per-drive/#
