@@ -40,19 +40,16 @@ end
 
 #Only dependent on state
 function R(s::State,a::Action,s′::State)
-    if s==params.win_state
-        return 10
-    elseif s==params.lose_state
-        return -10
-    elseif s==State(s′.x-1) && s.x>0
-        return 1
-    elseif s==State(s′.x-2) && s.x>0
-        return 2
-	elseif s.x<0
+    if s′.x-s.x==1 && a==kick
+		return 1/40*(s.x)
+    elseif s′.x-s.x==2 && a==two && s.x>0
+		return 1/20*s.x
+	elseif s′.x-s.x==2 && a==two && s.x<0
+		return -1/20*s.x
 	else
-
+		return 0
     end
-end		
+end	
 
 function T(s::State,a::Action)
 	nextstate=𝒮
