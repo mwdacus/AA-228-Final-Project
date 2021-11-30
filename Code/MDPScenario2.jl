@@ -1,5 +1,4 @@
 using POMDPModelTools
-using PlutoUI
 using QuickPOMDPs
 using POMDPs
 using Parameters
@@ -20,6 +19,7 @@ using Distributions
 	win_state=State(201)
 	lose_state=State(202)
 	termination_state=State(203)
+end
 
 params=ExtraParameters();
 

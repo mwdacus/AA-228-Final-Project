@@ -110,4 +110,3 @@ end
 	xlabel!("probability of making two point conversion")
 	ylabel!("value")
 
-
