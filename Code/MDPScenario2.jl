@@ -5,6 +5,11 @@ using Parameters
 using DiscreteValueIteration
 using Distributions
 
+#Define the State Space
+struct State
+	x::Int
+end
+
 #Enter Parameters
 @with_kw mutable struct ExtraParameters
 	#Rewards
@@ -25,16 +30,11 @@ end
 #Assign params to variable Parameters
 params=ExtraParameters();
 
-abstract type FieldGoal <: MDP{State, Action} end
-
 #Define the Action Space
 @enum Action kick two
 𝒜=[kick, two];
 
-#Define the State Space
-struct State
-	x::Int
-end
+
 𝒮=[[State(x) for x=-40:40]...,params.win_state,
 	params.lose_state,params.termination_state]
 
@@ -89,3 +89,4 @@ mdp = QuickMDP(FieldGoal,
 
     solver=ValueIterationSolver(max_iterations=1000)
     policy=solve(solver,mdp)
+	
