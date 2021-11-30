@@ -62,17 +62,22 @@ function R(s::State,a::Action,s′::State)
 end		
 
 function T(s::State,a::Action)
-	if a==kick && s==TD
-		p=mean.(params.p_suc_kick)*(1-mean.(params.p_stop_kick))
-		return SparseCat([TD, kickmade, twomade, missed, terminalstate], 
-			[0 p 0 1-p 0])
-	elseif a==two && s==TD
-		p=mean.(params.p_suc_two)*(1-mean.(params.p_stop_two))
-		return SparseCat([TD, kickmade, twomade, missed, terminalstate],[0 0 p 1-p 0])
-	else
-		return SparseCat([TD, kickmade, twomade, missed, terminalstate], [0 0 0 0 1])
+	nextstate=𝒮
+	prob=zeros(length(nextstate))
+	i=findall(x->x==s,𝒮)
+	if a==kick && (s!=State(201) && s!=State(202) && s!=State(203))
+		prob[i[1]+1]=mean.(params.p_suc_kick)*(1-mean.(params.p_stop_kick))
+		prob[i[1]]=1-prob[i[1]+1]
+		return SparseCat(nextstate,prob)
+	elseif a==kick && (s!=State(201) && s!=State(202) && s!=State(203))
+		prob[i[1]+2]=mean.(params.p_suc_two)*(1-mean.(params.p_stop_two))
+		prob[i[1]]=1-prob[i[1]+2]
+		return SparseCat(nextstate,prob)
+    else
+		prob[end]=1
+		return SparseCat(nextstate,prob)
 	end
-end	
+end
 
 termination(s::State)=s==𝒮[5]
 
