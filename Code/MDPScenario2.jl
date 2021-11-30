@@ -5,59 +5,52 @@ using Parameters
 using DiscreteValueIteration
 using Distributions
 
+#Enter Parameters
 @with_kw mutable struct ExtraParameters
 	#Rewards
 	r_kickmade::Real=1
 	r_scoremade::Real=2
 	
-	#Transitional Probabilities (Beta Distribution)
+	#Transitional Probabilities (Beta Distribution, Default Values)
 	p_suc_kick::Beta=Beta(9,1)
 	p_stop_kick::Beta=Beta(1,9)
 	p_suc_two::Beta=Beta(2,8)
 	p_stop_two::Beta=Beta(7,3)
 
-	win_state=State(201)
-	lose_state=State(202)
-	termination_state=State(203)
+	win_state=State(41)
+	lose_state=State(42)
+	termination_state=State(43)
 end
 
+#Assign params to variable Parameters
 params=ExtraParameters();
 
 abstract type FieldGoal <: MDP{State, Action} end
 
-
+#Define the Action Space
 @enum Action kick two
 𝒜=[kick, two];
 
+#Define the State Space
 struct State
 	x::Int
 end
-
-𝒮=[[State(x) for x=-200:200]...,params.win_state,
+𝒮=[[State(x) for x=-40:40]...,params.win_state,
 	params.lose_state,params.termination_state]
-
-termination(s::State)=s==params.termination_state
-
-γ=0.9
 
 #Only dependent on state
 function R(s::State,a::Action,s′::State)
-    if s==State(201)
-        return 0
-    elseif s==State(202)
-        return 0
+    if s==params.win_state
+        return 10
+    elseif s==params.lose_state
+        return -10
     elseif s==State(s′.x-1) && s.x>0
         return 1
     elseif s==State(s′.x-2) && s.x>0
         return 2
-    elseif s==State(s′.x-1) && (s.x<-125 && s.x>=-150) && a==kick
-        return -2
-    elseif s==State(s′.x-1) && (s.x<-160 && s.x>=-200) && a==kick
-        return -4
-    #elseif s==State(s′.x-2) && (s.x<-125 && s.x>=-150) && a==two
-    #	return 2
-    else 
-        return 0	
+	elseif s.x<0
+	else
+
     end
 end		
 
@@ -65,11 +58,11 @@ function T(s::State,a::Action)
 	nextstate=𝒮
 	prob=zeros(length(nextstate))
 	i=findall(x->x==s,𝒮)
-	if a==kick && (s!=State(201) && s!=State(202) && s!=State(203))
+	if a==kick && (s!=State(41) && s!=State(42) && s!=State(43))
 		prob[i[1]+1]=mean.(params.p_suc_kick)*(1-mean.(params.p_stop_kick))
 		prob[i[1]]=1-prob[i[1]+1]
 		return SparseCat(nextstate,prob)
-	elseif a==kick && (s!=State(201) && s!=State(202) && s!=State(203))
+	elseif a==kick && (s!=State(41) && s!=State(42) && s!=State(43))
 		prob[i[1]+2]=mean.(params.p_suc_two)*(1-mean.(params.p_stop_two))
 		prob[i[1]]=1-prob[i[1]+2]
 		return SparseCat(nextstate,prob)
@@ -79,8 +72,11 @@ function T(s::State,a::Action)
 	end
 end
 
-termination(s::State)=s==𝒮[5]
 
+#Define the termination state
+termination(s::State)=s==params.termination_state
+
+#Define Discount Factor
 γ=0.9
 
 abstract type FieldGoal <: MDP{State, Action} end
