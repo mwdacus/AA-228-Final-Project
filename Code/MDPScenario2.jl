@@ -5,11 +5,11 @@
 #Objective: Use Value Iteration to Determine the best policy after scoring a touchdown 
 #(either kick or go for two point conversion) based on point spread
 #Input: 
-    #Rewards
-    #Extra point completion percentage (p_suc_kick), 
-    #Opponent extra point stopping percentage (p_stop_kick),
-    #two point conversion completion percentage (p_suc_two)
-    #Opponent two point stopping percentage (p_stop_two)
+	#Rewards
+	#Extra point completion percentage (p_suc_kick), 
+	#Opponent extra point stopping percentage (p_stop_kick),
+	#two point conversion completion percentage (p_suc_two)
+	#Opponent two point stopping percentage (p_stop_two)
 #Output: policy (action for State)
 #----------------------------------------------------------------------------------
 
@@ -20,11 +20,11 @@ using Parameters
 using DiscreteValueIteration
 using Distributions
 
-#Define the State Space
 struct State
 	PS::Int
 end
 
+#Define the State Space
 #Enter Parameters
 @with_kw mutable struct ExtraParameters
 	#Rewards
@@ -55,27 +55,33 @@ params=ExtraParameters();
 
 #Only dependent on state
 function R(s::State,a::Action,s′::State)
-    
+	if s′.PS-s.PS==1 && a==kick
+		return 1
+	elseif s′.PS-s.PS==2 && a==two
+		return 2
+	else
+		return 0	
+	end
 end	
+
 
 function T(s::State,a::Action)
 	nextstate=𝒮
 	prob=zeros(length(nextstate))
 	i=findall(x->x==s,𝒮)
-	if a==kick && (s!=State(31) && s!=State(32) && s!=State(33))
+	if a==kick && s!=State(31) && s!=State(32) && s!=State(33)
 		prob[i[1]+1]=mean.(params.p_suc_kick)*(1-mean.(params.p_stop_kick))
 		prob[i[1]]=1-prob[i[1]+1]
 		return SparseCat(nextstate,prob)
-	elseif a==kick && (s!=State(31) && s!=State(32) && s!=State(33))
-		prob[i[1]+2]=mean.(params.p_suc_two)*(1-mean.(params.p_stop_two))
-		prob[i[1]]=1-prob[i[1]+2]
+	elseif a==kick && s!=State(31) && s!=State(32) && s!=State(33)
+		prob[i[1]+1]=mean.(params.p_suc_kick)*(1-mean.(params.p_stop_kick))
+		prob[i[1]]=1-prob[i[1]+1]
 		return SparseCat(nextstate,prob)
-    else
+	else
 		prob[end]=1
 		return SparseCat(nextstate,prob)
 	end
 end
-
 
 #Define the termination state
 termination(s::State)=s==params.termination_state
@@ -87,13 +93,16 @@ abstract type FieldGoal <: MDP{State, Action} end
 
 mdp = QuickMDP(FieldGoal,
 	states       = 𝒮,
-    actions      = 𝒜,
-    transition   = T,
-    reward       = R,
-    discount     = γ,
-    initialstate = 𝒮,
-    isterminal   = termination);
+	actions      = 𝒜,
+	transition   = T,
+	reward       = R,
+	discount     = γ,
+	initialstate = 𝒮,
+	isterminal   = termination);
 
-    solver=ValueIterationSolver(max_iterations=1000)
-    policy=solve(solver,mdp)
+	solver=ValueIterationSolver(max_iterations=1000)
+	policy=solve(solver,mdp)
+
+
+
 	
