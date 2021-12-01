@@ -4,6 +4,9 @@ using POMDPs
 using Parameters
 using DiscreteValueIteration
 using Distributions
+using LinearAlgebra
+using CSV, Tables # Writing to CSV files
+using DataFrames  # Not sure if this will end up being necessary
 
 #Define the State Space
 mutable struct State
@@ -15,22 +18,26 @@ end
 @with_kw mutable struct ExtraParameters
 	# Random problem Parametersexit()
 	num_drives::Int = 12
-	pointspread_max::Int = 60
+	pointspread_max::Int = 10
 	pointspread_vector::Array = collect(-pointspread_max:pointspread_max)
 	pointspread_size::Int = size(pointspread_vector)[1]
 
 	#Rewards
-	# r_kickmade::Real=1
-	# r_scoremade::Real=2
 	r_vector::Array = zeros(pointspread_size)
-	# r_vector[1] = 1
 
-	
 	#Transitional Probabilities (Beta Distribution, Default Values)
-	p_suc_kick::Beta=Beta(9,1)
-	p_stop_kick::Beta=Beta(1,9)
-	p_suc_two::Beta=Beta(2,8)
-	p_stop_two::Beta=Beta(7,3)
+	p_suc_kick  = 0.1
+	p_stop_kick = 0.1
+	p_suc_two   = 0.1
+	p_stop_two  = 0.1
+	p_home_kick = p_suc_kick * (1-p_stop_kick)  # unnormalized
+	p_opp_kick  = (1-p_suc_kick) * p_suc_kick
+	p_home_two  = p_suc_two * (1-p_stop_two)
+	p_opp_two   = (1-p_suc_two) * p_stop_two
+	dist_home_kick = Bernoulli(p_home_kick / sum([p_home_kick, p_opp_kick]))  # normalized distributions to draw from
+	dist_opp_kick  = Bernoulli(p_opp_kick  / sum([p_home_kick, p_opp_kick]))
+	dist_home_two  = Bernoulli(p_home_two  / sum([p_home_two, p_opp_two]))
+	dist_opp_two   = Bernoulli(p_opp_two   / sum([p_home_two, p_opp_two]))
 
 	termination_states = [State(num_drives,i) for i in -pointspread_max:pointspread_max]
 end
@@ -39,89 +46,108 @@ end
 params=ExtraParameters();
 
 #Workaround for bug: updating r_vector inside of ExtraParameters won't work
-params.r_vector[1:params.pointspread_max-2 ] .= -1
-params.r_vector[ params.pointspread_max+2:params.pointspread_size] .= 1
-r_closegame = [-100, 20, 100] 
-params.r_vector[params.pointspread_max-1:params.pointspread_max+1] .= r_closegame
+params.r_vector[1:params.pointspread_max-1] .= collect(-params.pointspread_max:-2)
+params.r_vector[params.pointspread_max+3:params.pointspread_size] .= collect(2 : params.pointspread_max)
+r_closegame = [-100, 20, 100]
+params.r_vector[params.pointspread_max:params.pointspread_max+2] .= r_closegame
 
 #Define the Action Space
 @enum Action kick two
 𝒜=[kick, two];
 
 #2D State Space , [12 drives + termainal state, 81 pointspreads]
-𝒮=[[State(d, ps) for d=-params.pointspread_max:params.pointspread_max for ps=1:params.num_drives+1]...]
+𝒮=[[State(d, ps) for d=1:params.num_drives for ps=-params.pointspread_max:params.pointspread_max]...]
+# 𝒮=[[State(d, ps) for d=-params.pointspread_max:params.pointspread_max for ps=1:params.num_drives+1]...]  #Includes terminal states...not sure if useful yet
 
 #Only dependent on state
-function R(s::State,a::Action,s′::State)
+# function R(s::State,a::Action,s′::State)
+function R(s′::State)
 	pointspread_final = s′.pointspread
-	return params.r_vector[pointspread_final + params.pointspread_max]
-end	
+	if pointspread_final < -params.pointspread_max
+		pointspread_final = -params.pointspread_max
+	elseif pointspread_final > params.pointspread_max
+		pointspread_final = params.pointspread_max
+	end
+	return params.r_vector[pointspread_final + params.pointspread_max + 1]
+end
 
-#Rollout a game from the current state. 'result' represents the outcome of the kick/two attempt post-TD ~ [0,1,2].
+# Performs the attempt for kick/two, returns the probabilistic outcome
+function doAttempt(s::State, a::Action)
+	if a == kick
+		return 1 * rand(params.dist_home_kick, 1)[1]   # Comes in vector form, indexing to extract
+	elseif a == two
+		return 2 * rand(params.dist_home_two, 1)[1]
+	end
+end
+
+# Rollout a game from the current state. 'result' represents the outcome of the kick/two attempt post-TD ~ [0,1,2].
 function SimulateSubgame(s::State, extra_points::Int)
 	s′::State = State(s.drive + 1, s.pointspread + extra_points)
-	p_home_touchdown = mean.(params.p_suc_two)
-	p_opp_touchdown  = mean.(params.p_stop_two)
-	dist_home = Bernoulli(p_home_touchdown)
-	dist_opp  = Bernoulli(p_opp_touchdown)
-	samples_home = rand(dist_home, params.num_drives+1 - s′.drive)  #Draw drive results for the remaining drives
-	samples_opp  = rand(dist_opp , params.num_drives+1 - s′.drive)
+	dist_TD_home = params.dist_home_two
+	dist_TD_opp  = params.dist_opp_two
+	samples_home = rand(dist_TD_home, params.num_drives+1 - s′.drive)  #Draw drive results for the remaining drives
+	samples_opp  = rand(dist_TD_opp , params.num_drives+1 - s′.drive)
 	pointspread_final = s′.pointspread + 7*sum(samples_home) - 7*sum(samples_opp)
 	s′.pointspread = pointspread_final
 	return s′
 end
 
-# function T(s::State,a::Action)
-# 	nextstate=𝒮
-# 	prob=zeros(length(nextstate))
-# 	i=findall(x->x==s,𝒮)
-# 	if a==kick && (s!=State(41) && s!=State(42) && s!=State(43))
-# 		prob[i[1]+1]=mean.(params.p_suc_kick)*(1-mean.(params.p_stop_kick))
-# 		prob[i[1]]=1-prob[i[1]+1]
-# 		return SparseCat(nextstate,prob)
-# 	elseif a==kick && (s!=State(41) && s!=State(42) && s!=State(43))
-# 		prob[i[1]+2]=mean.(params.p_suc_two)*(1-mean.(params.p_stop_two))
-# 		prob[i[1]]=1-prob[i[1]+2]
-# 		return SparseCat(nextstate,prob)
-#     else
-# 		prob[end]=1
-# 		return SparseCat(nextstate,prob)
-# 	end
-# end
+# Runs n iterations of a full game for each state-action pair. Returns average reward for each state-action pair
+function SolveGames(num_iters::Int)
+	Q::Array = zeros(size(𝒮)[1], size(𝒜)[1])
+	i=1
+	for s in 𝒮
+		j=1
+		for a in 𝒜
+			total_reward = 0
+			for iter in 1:num_iters
+				points = doAttempt(s, a)
+				total_reward += R(SimulateSubgame(s, points))
+				# Update the Q function for the given state-action pair with the average end-game reward
+				Q[i,j] = total_reward / num_iters
+			end
+			j += 1
+		end
+		i += 1
+	end
+	return Q
+end
 
+# Returns the optimal policy from each state given the state-action pair rewards from SolveGames()
+function GetPolicy(Q::Array)
+	Pi = zeros(size(𝒮)[1])
+	for i in 1:size(Q)[1]
+		if Q[i,1] >= Q[i,2]
+			Pi[i] = 1
+		else
+			Pi[i] = 2
+		end
+	end
+	Pi_reshaped = reshape(Pi, (params.num_drives, params.pointspread_size))
+	return Pi_reshaped
+end
 
-# #Define the termination state
-# termination(s::State)=s==params.termination_state
+function readCSV(infile::String)
+	df = DataFrame(CSV.File(infile))
+    D = Matrix(df)
+	println(D)
+end
 
-# #Define Discount Factor
-# γ=0.9
+function computePolicy(n::Int)
+	Q = SolveGames(n)
+	Pi = GetPolicy(Q)
+	# CSV.write("Data/Scenario3_Policies/test_matchup.csv",  Tables.table(test_Pi), writeheader=false)
+end
+# DEBUGGING / TESTING
 
-# abstract type FieldGoal <: MDP{State, Action} end
+params.p_suc_kick  = 0.9
+params.p_stop_kick = 0.1
+params.p_suc_two   = 0.2
+params.p_stop_two  = 0.7
 
-# mdp = QuickMDP(FieldGoal,
-# 	states       = 𝒮,
-#     actions      = 𝒜,
-#     transition   = T,
-#     reward       = R,
-#     discount     = γ,
-#     initialstate = 𝒮,
-#     isterminal   = termination);
-
-#     solver=ValueIterationSolver(max_iterations=1000)
-#     policy=solve(solver,mdp)
-	
-
-# DEBUGGING PRINTOUTS
-start_state = State(3, -1)
-test_result = 2
+test_state = State(3,-1)
 test_action = kick
-final_state = SimulateSubgame(start_state, test_result)
-# final_state.pointspread = 1
-test_reward = R(start_state, test_action, final_state)
+test_Q = SolveGames(1000)
+test_Pi = GetPolicy(test_Q)
+CSV.write("Data/Scenario3_Policies/test_matchup.csv",  Tables.table(test_Pi), writeheader=false)
 
-print("Start state: ")
-println(start_state)
-print("Game end state: ")
-println(final_state)
-print("Reward: ")
-println(test_reward)
