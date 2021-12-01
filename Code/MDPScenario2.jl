@@ -1,3 +1,18 @@
+#Michael Dacus                                    AA 228-Final Project                        Team 34
+# Ian Hokai
+# Tyler Weiss
+#
+#Objective: Use Value Iteration to Determine the best policy after scoring a touchdown 
+#(either kick or go for two point conversion) based on point spread
+#Input: 
+    #Rewards
+    #Extra point completion percentage (p_suc_kick), 
+    #Opponent extra point stopping percentage (p_stop_kick),
+    #two point conversion completion percentage (p_suc_two)
+    #Opponent two point stopping percentage (p_stop_two)
+#Output: policy (action for State)
+#----------------------------------------------------------------------------------
+
 using POMDPModelTools
 using QuickPOMDPs
 using POMDPs
@@ -7,7 +22,7 @@ using Distributions
 
 #Define the State Space
 struct State
-	x::Int
+	PS::Int
 end
 
 #Enter Parameters
@@ -22,9 +37,9 @@ end
 	p_suc_two::Beta=Beta(2,8)
 	p_stop_two::Beta=Beta(7,3)
 
-	win_state=State(41)
-	lose_state=State(42)
-	termination_state=State(43)
+	win_state=State(31)
+	lose_state=State(32)
+	termination_state=State(33)
 end
 
 #Assign params to variable Parameters
@@ -35,31 +50,23 @@ params=ExtraParameters();
 𝒜=[kick, two];
 
 
-𝒮=[[State(x) for x=-40:40]...,params.win_state,
+𝒮=[[State(x) for x=-30:30]...,params.win_state,
 	params.lose_state,params.termination_state]
 
 #Only dependent on state
 function R(s::State,a::Action,s′::State)
-    if s′.x-s.x==1 && a==kick
-		return 1/40*(s.x)
-    elseif s′.x-s.x==2 && a==two && s.x>0
-		return 1/20*s.x
-	elseif s′.x-s.x==2 && a==two && s.x<0
-		return -1/20*s.x
-	else
-		return 0
-    end
+    
 end	
 
 function T(s::State,a::Action)
 	nextstate=𝒮
 	prob=zeros(length(nextstate))
 	i=findall(x->x==s,𝒮)
-	if a==kick && (s!=State(41) && s!=State(42) && s!=State(43))
+	if a==kick && (s!=State(31) && s!=State(32) && s!=State(33))
 		prob[i[1]+1]=mean.(params.p_suc_kick)*(1-mean.(params.p_stop_kick))
 		prob[i[1]]=1-prob[i[1]+1]
 		return SparseCat(nextstate,prob)
-	elseif a==kick && (s!=State(41) && s!=State(42) && s!=State(43))
+	elseif a==kick && (s!=State(31) && s!=State(32) && s!=State(33))
 		prob[i[1]+2]=mean.(params.p_suc_two)*(1-mean.(params.p_stop_two))
 		prob[i[1]]=1-prob[i[1]+2]
 		return SparseCat(nextstate,prob)
