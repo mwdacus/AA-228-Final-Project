@@ -127,10 +127,15 @@ function GetPolicy(Q::Array)
 	return Pi_reshaped
 end
 
-function readCSV(infile::String)
+function readCSV(infile::String, home_team::String, opponent::String)
 	df = DataFrame(CSV.File(infile))
-    D = Matrix(df)
-	println(D)
+	println(df."Arizona_Cardinals")
+	# println(df.home_team)
+	params.p_suc_kick  = df."Arizona_Cardinals"[1]
+	params.p_stop_kick = df."Arizona_Cardinals"[1]
+	params.p_suc_two   = df."Arizona_Cardinals"[2]
+	params.p_stop_two  = df."Atlanta_Falcons"[3]
+
 end
 
 function computePolicy(n::Int)
@@ -138,16 +143,29 @@ function computePolicy(n::Int)
 	Pi = GetPolicy(Q)
 	# CSV.write("Data/Scenario3_Policies/test_matchup.csv",  Tables.table(test_Pi), writeheader=false)
 end
+
+function main(n::Int, home_team::String, away_team::String, num_drives::Int=13, max_pointspread::Int=20, data_filepath::String="Data/Data_Transposed.csv")
+	params.pointspread_max = max_pointspread
+	params.num_drives = num_drives
+
+	readCSV(data_filepath, home_team, away_team)
+	computePolicy(n)
+end
+
+
 # DEBUGGING / TESTING
 
-params.p_suc_kick  = 0.9
-params.p_stop_kick = 0.1
-params.p_suc_two   = 0.2
-params.p_stop_two  = 0.7
+# CSV Writing
+# test_state = State(3,-1)
+# test_action = kick
+# test_Q = SolveGames(1000)
+# test_Pi = GetPolicy(test_Q)
+# CSV.write("Data/Scenario3_Policies/test_matchup.csv",  Tables.table(test_Pi), writeheader=false)
 
-test_state = State(3,-1)
-test_action = kick
-test_Q = SolveGames(1000)
-test_Pi = GetPolicy(test_Q)
-CSV.write("Data/Scenario3_Policies/test_matchup.csv",  Tables.table(test_Pi), writeheader=false)
+# CSV Reading - issues with accessing String attributes using String variables
+data_filename = "Data/Data_Transposed.csv"
+home_team = "Arizona_Cardinals"
+away_team = "Atlanta_Falcons"
+readCSV(data_filename, home_team, away_team)
+
 
