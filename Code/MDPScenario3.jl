@@ -6,15 +6,16 @@ using DiscreteValueIteration
 using Distributions
 
 #Define the State Space
-struct State
+mutable struct State
 	drive::Int
-	point_spread::Int
+	pointspread::Int
 end
 
 #Enter Parameters
 @with_kw mutable struct ExtraParameters
-	# Random problem Parameters
-	pointspread_max::Int = 40
+	# Random problem Parametersexit()
+	num_drives::Int = 12
+	pointspread_max::Int = 60
 	pointspread_vector::Array = collect(-pointspread_max:pointspread_max)
 	pointspread_size::Int = size(pointspread_vector)[1]
 
@@ -31,12 +32,13 @@ end
 	p_suc_two::Beta=Beta(2,8)
 	p_stop_two::Beta=Beta(7,3)
 
-	termination_states = [State(13,i) for i in -40:40]
+	termination_states = [State(num_drives,i) for i in -pointspread_max:pointspread_max]
 end
 
 #Assign params to variable Parameters
 params=ExtraParameters();
 
+#Workaround for bug: updating r_vector inside of ExtraParameters won't work
 params.r_vector[1:params.pointspread_max-2 ] .= -1
 params.r_vector[ params.pointspread_max+2:params.pointspread_size] .= 1
 r_closegame = [-100, 20, 100] 
@@ -46,14 +48,28 @@ params.r_vector[params.pointspread_max-1:params.pointspread_max+1] .= r_closegam
 @enum Action kick two
 𝒜=[kick, two];
 
-
-𝒮=[[State(d, ps) for d=-40:40 for ps=1:13]...]
+#2D State Space , [12 drives + termainal state, 81 pointspreads]
+𝒮=[[State(d, ps) for d=-params.pointspread_max:params.pointspread_max for ps=1:params.num_drives+1]...]
 
 #Only dependent on state
 function R(s::State,a::Action,s′::State)
-	pointspread_final = s'.point_spread
-	return params.r_vector[pointspread_final + pointspread_max]
+	pointspread_final = s′.pointspread
+	return params.r_vector[pointspread_final + params.pointspread_max]
 end	
+
+#Rollout a game from the current state. 'result' represents the outcome of the kick/two attempt post-TD ~ [0,1,2].
+function SimulateSubgame(s::State, extra_points::Int)
+	s′::State = State(s.drive + 1, s.pointspread + extra_points)
+	p_home_touchdown = mean.(params.p_suc_two)
+	p_opp_touchdown  = mean.(params.p_stop_two)
+	dist_home = Bernoulli(p_home_touchdown)
+	dist_opp  = Bernoulli(p_opp_touchdown)
+	samples_home = rand(dist_home, params.num_drives+1 - s′.drive)  #Draw drive results for the remaining drives
+	samples_opp  = rand(dist_opp , params.num_drives+1 - s′.drive)
+	pointspread_final = s′.pointspread + 7*sum(samples_home) - 7*sum(samples_opp)
+	s′.pointspread = pointspread_final
+	return s′
+end
 
 # function T(s::State,a::Action)
 # 	nextstate=𝒮
@@ -96,5 +112,16 @@ end
 	
 
 # DEBUGGING PRINTOUTS
-# println(termination_states)
-println(params.r_vector)
+start_state = State(3, -1)
+test_result = 2
+test_action = kick
+final_state = SimulateSubgame(start_state, test_result)
+# final_state.pointspread = 1
+test_reward = R(start_state, test_action, final_state)
+
+print("Start state: ")
+println(start_state)
+print("Game end state: ")
+println(final_state)
+print("Reward: ")
+println(test_reward)
