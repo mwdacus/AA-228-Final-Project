@@ -46,8 +46,7 @@ function simulate(sarsp,mdp)
                 s1=State(6+sarsp.s′[end].PS)
             end
             #call function solver type
-            policy=MDPSolvingMethod(mdp)
-            a1=action(policy,s1)
+            a1=action(VI_policy,s1)
             if a1==kick && rand(Bernoulli(p_kick))==true
                 s1′=State(s1.PS+1)
                 r1=round(R(s1,a1),digits=3)
@@ -98,15 +97,13 @@ function simulate(sarsp,mdp)
 end
 
 #function for determining method of solving
-function MDPSolvingMethod(mdp)
-    if mdp==q_mdp
-        q_learning_solver = QLearningSolver(n_episodes=100,learning_rate=0.3,exploration_policy=EpsGreedyPolicy(mdp, 0.5),verbose=false);
-        return solve(q_learning_solver, mdp);
-    else
-        solver=ValueIterationSolver(max_iterations=100)
-            return solve(solver,mdp)
-    end
-end
+#function MDPSolvingMethod(mdp)
+#    if mdp==q_mdp
+#        return solve(q_learning_solver, mdp);
+#    else
+#    return solve(solver,mdp)
+#    end
+#end
 
 #=function for updating parameters
 function update(sarsp,params)
@@ -155,8 +152,9 @@ for j in 1:k
     #sars′_VI=simulate(sars′,mdp)
     sars′_qlearn=simulate(sars′,q_mdp)
 end
-#wins_vI=WinPercent(sars′_VI)
+#wins_VI=WinPercent(sars′_VI)
 wins_qlearn=WinPercent(sars′_qlearn)
 df=DataFrame(games=50:50:k,percentage=wins_qlearn)
-CSV.write("Data/Scenario2_Simulations/qlearn_simulation.csv",df)
+CSV.write("Data\Scenario2_Simulations_qlearn_simulation.csv",df)
+
 

@@ -53,18 +53,18 @@ params=ExtraParameters();
 𝒜=[kick, two];
 
 
-𝒮=[[State(x) for x=-50:50]...,params.win_state,
+𝒮=[[State(x) for x=-70:70]...,params.win_state,
 	params.lose_state,params.termination_state]
 
 #Only dependent on state
 function R(s::State,a::Action)
 	return (s==params.win_state ? 10 : 0) +
 	 (s==params.lose_state ? -10 : 0) + 
-	 (a==kick && s.PS>0 ? 2*exp(-s.PS/15) : 0) +
-	 (a==two && s.PS>0 ? 4*exp(-s.PS/15) : 0) +
+	 (a==kick && s.PS>0 ? 1*exp(-s.PS/15) : 0) +
 	 (a==kick && gcd(s.PS+1,7)==7 && s.PS<0 ? -2 : 0) + 
-	 (a==kick && s.PS<0 ? (-1/s.PS) : 0) +
-	 (a==two && gcd(s.PS+1,7)==7 && s.PS<0 ? 2 : 0)
+	 (a==kick && s.PS<0 ? 1*exp(s.PS/15) : 0) +
+	 (a==two && gcd(s.PS+1,7)==7 && s.PS<0 ? 2*exp(s.PS/15) : 0) +
+	 (a==two && gcd(s.PS+1,7)==7 && s.PS>0 ? 2*exp(-s.PS/15) : 0)
 end
 
 
@@ -106,7 +106,7 @@ mdp = QuickMDP(FieldGoal,
 
 #solve using Value Iteration
 solver=ValueIterationSolver(max_iterations=100)
-policy=solve(solver,mdp)
+VI_policy=solve(solver,mdp)
 
 #solve using Q-Learning (with an Exploration policy)
 q_mdp = QuickMDP(FieldGoal,
