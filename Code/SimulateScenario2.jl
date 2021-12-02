@@ -19,6 +19,7 @@ using Parameters
 using DiscreteValueIteration
 using Distributions
 using DataFrames
+using DataFramesMeta
 using CSV
 
 #Call Scenario 2
@@ -92,7 +93,8 @@ function simulate(sarsp,mdp)
         s′_end=params.termination_state
     end
     push!(sarsp,[s_end,a_end,r_end,s′_end])
-    return sarsp
+    return filter(row ->(row.s′==params.termination_state),sarsp)
+  
 end
 
 #function for determining method of solving
@@ -127,13 +129,15 @@ end
 #function for determining average win percentage
 function WinPercent(sarsp)
     (row,col)=size(sarsp)
-    num_wins=zeros(row)
-    num_losses=zeros(row)
-    win_percentage=zeros(row)
+    num_wins=zeros(Int(row/50))
+    num_losses=zeros(Int(row/50))
+    win_percentage=zeros(Int(row/50))
+    counter=1;
     for i in 50:50:row
-        num_wins[i]=count(x->(x==params.win_state),sarsp.s[1:i])
-        num_losses[i]=count(x->(x==params.lose_state),sarsp.s[1:i])
-        win_percentage[i]=num_wins[i]/num_losses[i]
+        num_wins[counter]=count(x->(x==params.win_state),sarsp.s[1:i])
+        num_losses[counter]=count(x->(x==params.lose_state),sarsp.s[1:i])
+        win_percentage[counter]=num_wins[counter]/(num_losses[counter]+num_wins[counter])
+        counter+=1
     end
     return win_percentage
 end
@@ -141,9 +145,18 @@ end
 #main Script Line
 #create an empty DataFrame Table (sars′)
 sars′=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
-#state number of iterations
-k=100;
-for j in 1:100   
-    simulate(sars′,mdp)
+sars′_VI=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
+sars′_qlearn=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
+#state number of game simulations
+k=10000;
+for j in 1:k
+    global sars′_VI
+    global sars′_qlearn
+    #sars′_VI=simulate(sars′,mdp)
+    sars′_qlearn=simulate(sars′,q_mdp)
 end
-CSV.write("simulation.csv",sars′)
+#wins_vI=WinPercent(sars′_VI)
+wins_qlearn=WinPercent(sars′_qlearn)
+df=DataFrame(games=50:50:k,percentage=wins_qlearn)
+CSV.write("Data/Scenario2_Simulations/qlearn_simulation.csv",df)
+
