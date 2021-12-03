@@ -42,10 +42,12 @@ end
 	p_suc_two::Beta=Beta(2,8)
 	p_stop_two::Beta=Beta(7,3)
 
-    p_suc_drive::Beta=Beta(5,5)
-    p_stop_drive::Beta=Beta(5,5)
+    p_suc_drive::Beta=Beta(3,10)
+    p_stop_drive::Beta=Beta(3,10)
 
-    termination_states::Array = [State(25, ps) for ps in -30:30]  # for t in Teams]
+    # termination_state::Array = [State(25, ps) for ps in -30:30]  # for t in Teams]
+    termination_state::State = State(26, 0)
+
 end
 
 #Assign params to variable Parameters
@@ -56,7 +58,7 @@ params=ExtraParameters();
 𝒜=[kick, two];
 
 
-𝒮=[[State(d, ps) for d=1:24 for ps=-30:30]..., params.termination_states] #for t=Teams]...,params.termination_states]
+𝒮=[[State(d, ps) for d=1:25 for ps=-30:30]..., params.termination_state] #for t=Teams]...,params.termination_states]
 
 #Only dependent on state
 function R(s::State,a::Action,s′::State)
@@ -83,45 +85,70 @@ end
 
 
 function T(s::State,a::Action)
+    # println(s)
 	nextstate=𝒮
 	prob=zeros(length(nextstate))
 	i=findall(x->x==s,𝒮)
 
-    if !iseven(s.drive)  # prob[state + kick points - away touchdown + switch teams]
-        if a==kick && !(s in params.termination_states)
-            prob[i[1] + 61 + 1 - 6] = mean.(params.p_suc_kick) * (1-mean.(params.p_stop_kick)) * mean.(params.p_suc_drive)    # make kick, away makes drive
-            prob[i[1] + 61 + 0 - 6] = 1-prob[i[1] + 61 + 1 - 6] * mean.(params.p_suc_drive)                             # make kick, away misses drive
-            prob[i[1] + 61 + 1 - 0] = mean.(params.p_suc_kick) * (1-mean.(params.p_stop_kick)) * mean.(params.p_stop_drive)   # miss kick, away makes drive
-            prob[i[1] + 61 + 0 - 0] = 1-prob[i[1] + 61 + 1 - 0] * mean.(params.p_suc_drive)                            # miss kick, away misses drive
-            return SparseCat(nextstate,prob)
+    p_home_kick = mean.(params.p_suc_kick) * (1-mean.(params.p_stop_kick))
+    p_away_kick = p_home_kick
+    p_home_two = mean.(params.p_suc_two) * (1-mean.(params.p_stop_two))
+    p_home_drive = mean.(params.p_suc_drive)
+    p_away_drive = mean.(params.p_suc_drive)
 
-        elseif a==two && !(s in params.termination_states)
-            prob[i[1] + 61 + 2 - 6] = mean.(params.p_suc_two) * (1-mean.(params.p_stop_two)) * mean.(params.p_suc_drive)    # make kick, away makes drive
-            prob[i[1] + 61 + 0 - 6] = 1-prob[i[1] + 61 + 2 - 6] * mean.(params.p_suc_drive)                             # make kick, away misses drive
-            prob[i[1] + 61 + 2 - 0] = mean.(params.p_suc_two) * (1-mean.(params.p_stop_two)) * mean.(params.p_stop_drive)   # miss kick, away makes drive
-            prob[i[1] + 61 + 0 - 0] = 1-prob[i[1] + 61 + 2 - 0] * mean.(params.p_suc_drive)                            # miss kick, away misses drive
-        else
-            prob[end]=1
+    # Transition to single sink terminal state
+    if s.drive == 25
+        prob[61*25 + 1] = 1
+        return SparseCat(nextstate, prob)
+    end
+    # Skipping edge cases of the pointspread bound
+   
+    if s.pointspread <= -23
+        prob[i[1] + 61] = 1
+        return SparseCat(nextstate, prob)
+    elseif s.pointspread >= 20
+        prob[i[1] + 61] = 1
+        return SparseCat(nextstate, prob)
+    end
+
+    # println("break1")
+    if !iseven(s.drive) && s!=params.termination_state # prob[state + kick points - away touchdown + switch teams]
+        if a==kick #&& !(s in params.termination_states)
+            prob[i[1] + 61 + 1 - 6] = p_home_kick     * p_away_drive          # home make kick, away makes drive
+            prob[i[1] + 61 + 1 - 6] = p_home_kick     * (1-p_away_drive)      # home make kick, away misses drive
+            prob[i[1] + 61 + 1 - 6] = (1-p_home_kick) * p_away_drive    # home miss kick, away makes drive
+            prob[i[1] + 61 + 1 - 6] = (1-p_home_kick) * (1-p_away_drive)  # home miss kick, away misses drive
+            # prob[i[1]] = 1
+            return SparseCat(nextstate,prob)
+        elseif a==two #&& !(s in params.termination_states)
+            prob[i[1] + 61 + 2 - 6] = p_home_two     * p_away_drive      # home make two, away makes drive
+            prob[i[1] + 61 + 0 - 6] = p_home_two     * (1-p_away_drive)  # home make two, away misses drive
+            prob[i[1] + 61 + 2 - 0] = (1-p_home_two) * p_away_drive      # home miss two, away makes drive
+            prob[i[1] + 61 + 0 - 0] = (1-p_home_two) * (1-p_away_drive)  # home miss two, away misses drive
+            # prob[i[1]] = 1
             return SparseCat(nextstate,prob)
         end
-
-    else  # away team -- take stochastic 'kick' action, stochastic home drive
-        if a==kick && !(s in params.termination_states)
-            prob[i[1] + 61 - 1 + 6] = mean.(params.p_suc_kick) * (1-mean.(params.p_stop_kick)) * mean.(params.p_suc_drive)    # make kick, away makes drive
-            prob[i[1] + 61 - 0 + 6] = 1-prob[i[1] + 61 - 1 + 6] * mean.(params.p_suc_drive)                             # make kick, away misses drive
-            prob[i[1] + 61 - 1 + 0] = mean.(params.p_suc_kick) * (1-mean.(params.p_stop_kick)) * mean.(params.p_stop_drive)   # miss kick, away makes drive
-            prob[i[1] + 61 - 0 + 0] = 1-prob[i[1] + 61 - 1 + 0] * mean.(params.p_suc_drive)                            # miss kick, away misses drive
+    elseif iseven(s.drive) && s!=params.termination_state # away team -- take stochastic 'kick' action, stochastic home drive
+        if a==kick #&& !(s in params.termination_states)
+            prob[i[1] + 61 - 1 + 6] = p_away_kick     * p_home_drive      # away make kick, home makes drive
+            prob[i[1] + 61 - 0 + 6] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
+            prob[i[1] + 61 - 1 + 0] = (1-p_away_kick) * p_home_drive      # away miss kick, home makes drive
+            prob[i[1] + 61 - 0 + 0] = (1-p_away_kick) * (1-p_home_drive)  # away miss kick, home misses drive
+            # prob[i[1]] = 1
             return SparseCat(nextstate,prob)
-        else # WORKAROUD: away team can't go for two
-            prob[i + 121] = 1
+        elseif a==two # WORKAROUD: away team can't go for two
+            # prob[i + 121] = 1
+            prob[i[1]] =1
             return SparseCat(nextstate, prob)
         end
+    else
+        p[end] = 1
     end
 end
 
 
 #Define the termination state
-termination(s::State) = s in params.termination_states
+termination(s::State) = s == params.termination_state #in params.termination_states
 
 #Define Discount Factor
 γ=0.9
@@ -137,12 +164,12 @@ mdp = QuickMDP(FieldGoal,
 	initialstate = 𝒮,
 	isterminal   = termination);
 
-	solver=ValueIterationSolver(max_iterations=1000)
-	# policy=solve(solver,mdp)
+	solver=ValueIterationSolver(max_iterations=10)
+	policy=solve(solver,mdp)
 
-
+    println(policy)
 # DEBUGGING
-
-s_test = State(1, 5, home)
-a_test = kick
-T(s_test, a_test)
+# s_test = State(1, -23)
+# a_test = kick
+# dist_out = T(s_test, a_test)
+# println(dist_out(31 + 61 + 1 - 6))
