@@ -46,7 +46,9 @@ function simulate(sarsp,mdp)
                 s1=State(6+sarsp.s′[end].PS)
             end
             #call function solver type
-            a1=action(VI_policy,s1)
+            # a1=action(VI_policy,s1)
+            a1=kick
+
             if a1==kick && rand(Bernoulli(p_kick))==true
                 s1′=State(s1.PS+1)
                 r1=round(R(s1,a1),digits=3)
@@ -80,7 +82,7 @@ function simulate(sarsp,mdp)
         end
     end
     # Determine if they win or lose, and add to sars′
-    if sarsp.s′[end].PS>0
+    if sarsp.s′[end].PS >= 0
         s_end=params.win_state
         a_end=kick
         r_end=r1=round(R(s_end,a_end),digits=3)
@@ -98,6 +100,8 @@ end
 
 #function for determining average win percentage
 function WinPercent(sarsp)
+    println(sarsp)
+
     (row,col)=size(sarsp)
     num_wins=zeros(Int(row/50))
     num_losses=zeros(Int(row/50))
@@ -119,7 +123,7 @@ sars′=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 sars′_VI=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 sars′_qlearn=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 #state number of game simulations
-k=100;
+k=1000;
 for j in 1:k
     global sars′_VI
     global sars′_qlearn
