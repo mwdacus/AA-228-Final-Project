@@ -53,7 +53,6 @@ end
 
 	plot(p_home_kick,v_kick[1,:],label="p_stop=0.2")
 	plot!(p_home_kick,v_kick[2,:],label="p_stop=0.4")
-	plot!(p_home_kick,v_kick[2,:],label="p_stop=0.4")
 	plot!(p_home_kick,v_kick[3,:],label="p_stop=0.6")
 	plot!(p_home_kick,v_kick[4,:],label="p_stop=0.8")
 	xlabel!("probability of making extra point")
