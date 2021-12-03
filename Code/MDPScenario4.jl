@@ -166,8 +166,8 @@ function T(s::State,a::Action)
     elseif s.drive == params.num_drives
         if a==kick
             prob[i[1] + one_drive - 1] = p_away_kick     * p_home_drive      # away make kick, home makes drive
-            prob[i[1] + one_drive - 0] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
-            prob[i[1] + one_drive - 1] = (1-p_away_kick) * p_home_drive      # away miss kick, home makes drive
+            prob[i[1] + one_drive - 1] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
+            prob[i[1] + one_drive - 0] = (1-p_away_kick) * p_home_drive      # away miss kick, home makes drive
             prob[i[1] + one_drive - 0] = (1-p_away_kick) * (1-p_home_drive)  # away miss kick, home misses drive
             return SparseCat(nextstate,prob)
         elseif a==two  # Opponent can't go for two

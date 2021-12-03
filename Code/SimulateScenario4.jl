@@ -152,7 +152,7 @@ sars′        = DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 sars′_VI     = DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 sars′_qlearn = DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 #state number of game simulations
-k = 5;
+k = 200;
 for j in 1:k
     global sars′_VI
     # sars′_VI=simulate(sars′,mdp)
@@ -163,8 +163,8 @@ end
 # df=DataFrame(games=50:50:k,percentage=wins_VI)
 # CSV.write("Data/Scenario3_Simulations/VI_simulation1.csv",df)
 
-# wins_qlearn=WinPercent(sars′_qlearn)
-# df=DataFrame(games=50:50:k,percentage=wins_qlearn)
-# CSV.write("Data/Scenario3_Simulations/qlearn_simulation1.csv",df)
+wins_qlearn=WinPercent(sars′_qlearn)
+df=DataFrame(games=50:50:k,percentage=wins_qlearn)
+CSV.write("Data/Scenario3_Simulations/qlearn_simulation1.csv",df)
 
 println("csv written!!!")
