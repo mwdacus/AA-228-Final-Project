@@ -197,6 +197,9 @@ function main(n::Int, home_team::String, away_team::String, output_filepath::Str
 	CSV.write(output_filepath, Tables.table(Pi_star), writeheader=false)
 end
 
+
+
+
 ##########################################################################################################
 # DEBUGGING / TESTING
 

@@ -103,6 +103,7 @@ function WinPercent(sarsp)
     num_losses=zeros(Int(row/50))
     win_percentage=zeros(Int(row/50))
     counter=1;
+    println(size(sarsp))
     for i in 50:50:row
         num_wins[counter]=count(x->(x==params.win_state),sarsp.s[1:i])
         num_losses[counter]=count(x->(x==params.lose_state),sarsp.s[1:i])
@@ -118,7 +119,7 @@ sars′=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 sars′_VI=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 sars′_qlearn=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 #state number of game simulations
-k=10000;
+k=100;
 for j in 1:k
     global sars′_VI
     global sars′_qlearn
@@ -129,5 +130,6 @@ end
 wins_qlearn=WinPercent(sars′_qlearn)
 df=DataFrame(games=50:50:k,percentage=wins_qlearn)
 CSV.write("Data/Scenario2_Simulations/qlearn_simulation1.csv",df)
+println("CSV Written")
 
 
