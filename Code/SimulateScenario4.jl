@@ -35,28 +35,35 @@ p_two=mean.(params.p_suc_two)*(1-mean.(params.p_stop_two));
 #Simulate Game function
 function simulate(sarsp,mdp)
     #Assume 12 offensive drives in a game
+    println("RESTART GAME")
     for i in 1:params.num_drives
+        println(i)
         # TD scored on drive
         if rand(Bernoulli(p_td))==true
+            println("Touchdown!")
             global params
             local policy
             # Home team
-            if !iseven(i)
+            if !(iseven(i))
+                println("home possession")
                 if i==1 || sarsp.s′==[]
                     s1 = State(i, 6)
                 else
-
                     s1 = State(i, sarsp.s′[end].pointspread + 6)
                 end
             
                 #call function solver type
-                a1=action(VI_policy,s1)
+                # a1 = action(VI_policy,s1)
+                a1 = action(q_learning_policy, s1)
 
                 if a1==kick && rand(Bernoulli(p_kick))==true
-                    s1′ = State(i+1 , s1.pointspread + 1)
+                    println("good kick")
+                    s1′ = State(i+1, s1.pointspread + 1)
                 elseif a1==two && rand(Bernoulli(p_two))==true
-                    s1′ = State(i+1 , s1.pointspread + 2)
+                    println("good two")
+                    s1′ = State(i+1, s1.pointspread + 2)
                 else
+                    println("no extra")
                     s1′ = State(i+1 , s1.pointspread) 
                 end
 
@@ -65,18 +72,21 @@ function simulate(sarsp,mdp)
                 #update(sarsp,params)
             # Opponent possession
             else 
-
-                if i==1 || sarsp.s′==[]
+                println("away possession")
+                if i==1 || sarsp.s′==[] || sarsp.s′[end]==params.termination_state
                     s1 = State(i, -6)
                 else
                     s1 = State(i, sarsp.s′[end].pointspread - 6)
                 end
                 # Assume they go for a kick
-                if rand(Bernoulli(p_kick))==true
-                    s1′ = State(i+1, s1.pointspread - 1)
-                else
-                    s1′ = State(i+1, s1.pointspread)
-                end
+                # if rand(Bernoulli(p_kick))==true
+                #     s1′ = State(i+1, s1.pointspread - 1)
+                # else
+                #     s1′ = State(i+1, s1.pointspread)
+                # end
+
+                # DEBUG - deterministic kick
+                s1′ = State(i+1, s1.pointspread - 1)
 
                 a1 = kick
                 r1 = 1
@@ -85,16 +95,21 @@ function simulate(sarsp,mdp)
             end
         # TD not scored on possession
         else
-            s1 = params.termination_state
+            println("no touchdown -- up one drive")
             a1 = kick
             r1 = 1
             if sarsp.s′ == []
+                s1 = State(i, 0)
                 s1′ = State(i+1, 0)
             else
+                s1 = State(i, sarsp.s′[end].pointspread)
                 s1′ = State(i+1, sarsp.s′[end].pointspread)
             end
             push!(sarsp, [s1, a1, r1, s1′])
         end
+
+        println(sarsp.s[end])
+        println(sarsp.s′[end])
     end
 
     # Determine if they win or lose, and add to sars′
@@ -133,20 +148,20 @@ end
 
 #main Script Line
 #create an empty DataFrame Table (sars′)
-sars′=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
-sars′_VI=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
-sars′_qlearn=DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
+sars′        = DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
+sars′_VI     = DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
+sars′_qlearn = DataFrame(s=State[],a=Action[],r=Float64[],s′=State[]);
 #state number of game simulations
-k=1000;
+k = 5;
 for j in 1:k
     global sars′_VI
-    sars′_VI=simulate(sars′,mdp)
+    # sars′_VI=simulate(sars′,mdp)
     global sars′_qlearn
-    # sars′_qlearn=simulate(sars′,q_mdp)
+    sars′_qlearn=simulate(sars′,q_mdp)
 end
-wins_VI=WinPercent(sars′_VI)
-df=DataFrame(games=50:50:k,percentage=wins_VI)
-CSV.write("Data/Scenario3_Simulations/VI_simulation1.csv",df)
+# wins_VI=WinPercent(sars′_VI)
+# df=DataFrame(games=50:50:k,percentage=wins_VI)
+# CSV.write("Data/Scenario3_Simulations/VI_simulation1.csv",df)
 
 # wins_qlearn=WinPercent(sars′_qlearn)
 # df=DataFrame(games=50:50:k,percentage=wins_qlearn)

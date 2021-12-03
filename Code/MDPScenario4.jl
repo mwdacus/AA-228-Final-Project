@@ -36,25 +36,25 @@ end
 #Enter Parameters
 @with_kw mutable struct ExtraParameters
 	#Rewards
-	r_kickmade::Real=1
-	r_scoremade::Real=2
+	r_kickmade::Real = 1 
+	r_scoremade::Real = 2
 
     #State Space parameters
-    num_drives = 24  # Keep it even!!!
+    num_drives = 2  # Keep it even!!! each team get n/2 drives
     pointspread_max::Int = (num_drives/2) * 8
     pointspread_range::Int = pointspread_max*2 + 1
 	
 	#Transitional Probabilities (Beta Distribution, Default Values)
-	p_suc_kick::Beta=Beta(9,1)
-	p_stop_kick::Beta=Beta(1,9)
-	p_suc_two::Beta=Beta(6,4)
-	p_stop_two::Beta=Beta(5,5)
+	p_suc_kick::Beta  = Beta(9,1)
+	p_stop_kick::Beta = Beta(1,9)
+	p_suc_two::Beta   = Beta(9,1)
+	p_stop_two::Beta  = Beta(2,8)
 
-    p_suc_drive::Beta=Beta(3,10)
-    p_stop_drive::Beta=Beta(3,10)
+    p_suc_drive::Beta  = Beta(3,7)
+    p_stop_drive::Beta = Beta(3,7)
 
     termination_state::State = State(num_drives + 2, 0)
-    win_state::State = State(num_drives + 2,1)
+    win_state::State  = State(num_drives + 2, 1)
     lose_state::State = State(num_drives + 2,-1)
 
 end
@@ -101,6 +101,7 @@ function T(s::State,a::Action)
 	nextstate=𝒮
 	prob=zeros(length(nextstate))
 	i=findall(x->x==s,𝒮)
+
     one_drive = params.pointspread_range
 
     p_home_kick = mean.(params.p_suc_kick) * (1-mean.(params.p_stop_kick))
@@ -110,7 +111,16 @@ function T(s::State,a::Action)
     p_away_drive = mean.(params.p_suc_drive)
 
     # Transition to single sink terminal state
-    if s.drive == params.num_drives+1 || s.drive == params.num_drives+2
+    if s.drive == params.num_drives+1
+        if s.pointspread >= 0  # If winning/tied in Drive 25, transition to win state
+            prob[end - 2] = 1
+        elseif s.pointspread < 0
+            prob[end-1] = 1  #
+        # else
+        #     prob[end] = 1
+        end
+        return SparseCat(nextstate, prob)
+    elseif s.drive == params.num_drives+2
         prob[end] = 1
         return SparseCat(nextstate, prob)
     end
@@ -125,31 +135,40 @@ function T(s::State,a::Action)
         return SparseCat(nextstate, prob)
     end
 
-
-    # println("break1")
+    # Home just made TD, goes for kick/two, then away goes for a drive
     if !iseven(s.drive) && s!=params.termination_state # prob[state + kick points - away touchdown + switch teams]
-        if a==kick #&& !(s in params.termination_states)
+        if a==kick
             prob[i[1] + one_drive + 1 - 6] = p_home_kick     * p_away_drive          # home make kick, away makes drive
-            prob[i[1] + one_drive + 1 - 6] = p_home_kick     * (1-p_away_drive)      # home make kick, away misses drive
-            prob[i[1] + one_drive + 1 - 6] = (1-p_home_kick) * p_away_drive    # home miss kick, away makes drive
-            prob[i[1] + one_drive + 1 - 6] = (1-p_home_kick) * (1-p_away_drive)  # home miss kick, away misses drive
-            # prob[i[1]] = 1
+            prob[i[1] + one_drive + 1 - 0] = p_home_kick     * (1-p_away_drive)      # home make kick, away misses drive
+            prob[i[1] + one_drive + 0 - 6] = (1-p_home_kick) * p_away_drive          # home miss kick, away makes drive
+            prob[i[1] + one_drive + 0 - 0] = (1-p_home_kick) * (1-p_away_drive)      # home miss kick, away misses drive
             return SparseCat(nextstate,prob)
-        elseif a==two #&& !(s in params.termination_states)
+        elseif a==two
             prob[i[1] + one_drive + 2 - 6] = p_home_two     * p_away_drive      # home make two, away makes drive
-            prob[i[1] + one_drive + 0 - 6] = p_home_two     * (1-p_away_drive)  # home make two, away misses drive
-            prob[i[1] + one_drive + 2 - 0] = (1-p_home_two) * p_away_drive      # home miss two, away makes drive
+            prob[i[1] + one_drive + 2 - 0] = p_home_two     * (1-p_away_drive)  # home make two, away misses drive
+            prob[i[1] + one_drive + 0 - 6] = (1-p_home_two) * p_away_drive      # home miss two, away makes drive
             prob[i[1] + one_drive + 0 - 0] = (1-p_home_two) * (1-p_away_drive)  # home miss two, away misses drive
-            # prob[i[1]] = 1
             return SparseCat(nextstate,prob)
         end
+    # Away just made TD, takes action, then home goes for a drive
     elseif iseven(s.drive) && s!=params.termination_state # away team -- take stochastic 'kick' action, stochastic home drive
-        if a==kick #&& !(s in params.termination_states)
+        if a==kick
             prob[i[1] + one_drive - 1 + 6] = p_away_kick     * p_home_drive      # away make kick, home makes drive
-            prob[i[1] + one_drive - 0 + 6] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
-            prob[i[1] + one_drive - 1 + 0] = (1-p_away_kick) * p_home_drive      # away miss kick, home makes drive
+            prob[i[1] + one_drive - 1 + 0] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
+            prob[i[1] + one_drive - 0 + 6] = (1-p_away_kick) * p_home_drive      # away miss kick, home makes drive
             prob[i[1] + one_drive - 0 + 0] = (1-p_away_kick) * (1-p_home_drive)  # away miss kick, home misses drive
-            # prob[i[1]] = 1
+            return SparseCat(nextstate,prob)
+        elseif a==two  # Opponent can't go for two
+            prob[end] = 1
+            return SparseCat(nextstate, prob)
+        end
+    # Home can't score touchdown after last drive
+    elseif s.drive == params.num_drives
+        if a==kick
+            prob[i[1] + one_drive - 1] = p_away_kick     * p_home_drive      # away make kick, home makes drive
+            prob[i[1] + one_drive - 0] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
+            prob[i[1] + one_drive - 1] = (1-p_away_kick) * p_home_drive      # away miss kick, home makes drive
+            prob[i[1] + one_drive - 0] = (1-p_away_kick) * (1-p_home_drive)  # away miss kick, home misses drive
             return SparseCat(nextstate,prob)
         elseif a==two  # Opponent can't go for two
             prob[end] = 1
@@ -182,7 +201,7 @@ mdp = QuickMDP(FieldGoal,
 
 solver=ValueIterationSolver(max_iterations=1)
 tick()
-VI_policy=solve(solver,mdp)
+# VI_policy=solve(solver,mdp)
 tock()
 
 q_mdp = QuickMDP(FieldGoal,
@@ -194,8 +213,10 @@ q_mdp = QuickMDP(FieldGoal,
     initialstate = 𝒮,
     isterminal   = termination);
 
-q_learning_solver = QLearningSolver(n_episodes=50,
+q_learning_solver = QLearningSolver(n_episodes=1000,
 	learning_rate=0.3,
 	exploration_policy=EpsGreedyPolicy(q_mdp, 0.5),
 	verbose=false);
-# q_learning_policy = solve(q_learning_solver, q_mdp);
+tick()
+q_learning_policy = solve(q_learning_solver, q_mdp);
+tock()
