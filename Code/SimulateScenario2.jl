@@ -96,33 +96,6 @@ function simulate(sarsp,mdp)
   
 end
 
-#function for determining method of solving
-#function MDPSolvingMethod(mdp)
-#    if mdp==q_mdp
-#        return solve(q_learning_solver, mdp);
-#    else
-#    return solve(solver,mdp)
-#    end
-#end
-
-#=function for updating parameters
-function update(sarsp,params)
-	if sarsp.s′[end]==kickmade
-		params.p_suc_kick=Beta(params.p_suc_kick.α+1,params.p_suc_kick.β)
-		params.p_stop_kick=Beta(params.p_stop_kick.α,params.p_stop_kick.β)
-	elseif sarsp.s′[end]==twomade
-		params.p_suc_two=Beta(params_suc_two.α+1,params.p_suc_two.β)
-		params.p_stop_two=Beta(params_stop_two.α,params.p_stop_two.β)
-	elseif sarsp.s′[end]==missed && a==kick
-		params.p_suc_kick=Beta(params.p_suc_kick.α,params.p_suc_kick.β+1)
-		params.p_stop_kick=Beta(params.p_stop_kick.α+1,params.p_stop_kick.β)
-	else
-		params.p_suc_two=Beta(params.p_suc_two.α,params.p_suc_two.β+1)
-		params.p_stop_two=Beta(params.p_stop_two.α+1,params.p_stop_two.β)
-	end
-end
-=#
-
 #function for determining average win percentage
 function WinPercent(sarsp)
     (row,col)=size(sarsp)
@@ -155,6 +128,6 @@ end
 #wins_VI=WinPercent(sars′_VI)
 wins_qlearn=WinPercent(sars′_qlearn)
 df=DataFrame(games=50:50:k,percentage=wins_qlearn)
-CSV.write("Data\Scenario2_Simulations_qlearn_simulation.csv",df)
+CSV.write("Data/Scenario2_Simulations/qlearn_simulation1.csv",df)
 
 
