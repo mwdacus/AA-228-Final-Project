@@ -21,6 +21,7 @@ using Distributions
 using DataFrames
 using DataFramesMeta
 using CSV
+# cd(@__DIR__)
 
 #Call Scenario 2
 include("MDPScenario4.jl")
@@ -60,19 +61,15 @@ function simulate(sarsp,mdp)
                 # a1 = action(q_learning_policy, s1)
 
                 if a1==kick && rand(Bernoulli(p_kick))==true
-                    # println("good kick")
                     s1′ = State(i+1, s1.pointspread + 1)
                 elseif a1==two && rand(Bernoulli(p_two))==true
-                    # println("good two")
                     s1′ = State(i+1, s1.pointspread + 2)
                 else
-                    # println("missed kick/two")
                     s1′ = State(i+1 , s1.pointspread) 
                 end
 
                 r1=round(R(s1,a1),digits=3)   
                 push!(sarsp,[s1,a1,r1,s1′])
-                #update(sarsp,params)
             # Opponent possession
             else 
                 # println("away possession")
@@ -90,17 +87,12 @@ function simulate(sarsp,mdp)
                     s1′ = State(i+1, s1.pointspread)
                 end
 
-                # DEBUG - deterministic kick
-                # s1′ = State(i+1, s1.pointspread - 1)
-
                 a1 = kick
                 r1 = 1
                 push!(sarsp,[s1,a1,r1,s1′])
-                # push!(sarsp,[s1,kick,1,s1′])  #HOKAJ - why termination state in sim2?
             end
         # TD not scored on possession
         else
-            # println("no touchdown -- up one drive")
             a1 = kick
             r1 = 1
             if sarsp.s′ == []
@@ -112,9 +104,6 @@ function simulate(sarsp,mdp)
             end
             push!(sarsp, [s1, a1, r1, s1′])
         end
-
-        # println(sarsp.s[end], ", ", sarsp.s′[end])
-        # println(sarsp.s′[end])
     end
 
     # Determine if they win or lose, and add to sars′
@@ -181,7 +170,10 @@ for j in 1:k
 end
 wins_VI=WinPercent(sars′_VI)
 df=DataFrame(games=50:50:k,percentage=wins_VI)
-CSV.write("Data/Scenario3_Simulations/VI_simulation1.csv",df)
+# CSV.write("Data/Scenario3_Simulations/VI_simulation01.csv",df)
+# CSV.write("Data/Scenario3_Simulations/VI_simulation1.csv",df)
+# CSV.write("Data/Scenario3_Simulations/VI_simulation10.csv",df)
+CSV.write("Data/Scenario3_Simulations/VI_simulation100.csv",df)
 
 
 # Q-LEARNING
@@ -194,8 +186,8 @@ CSV.write("Data/Scenario3_Simulations/VI_simulation1.csv",df)
 #         println(j)
 #     end
 # end
-
 # wins_qlearn=WinPercent(sars′_qlearn)
 # df=DataFrame(games=50:50:k,percentage=wins_qlearn)
-# CSV.write("Data/Scenario3_Simulations/qlearn_simulation1.csv",df)
-println("csv written!!!")
+# # CSV.write("Data/Scenario3_Simulations/qlearn_simulation5.csv",df)  # 50 case
+# # CSV.write("Data/Scenario3_Simulations/qlearn_simulation1.csv",df)  # 100 case
+# println("csv written!!!")

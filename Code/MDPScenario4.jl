@@ -40,7 +40,7 @@ end
 	r_scoremade::Real = 2
 
     #State Space parameters
-    num_drives = 6  # Keep it even!!! each team get n/2 drives
+    num_drives = 4  # Keep it even!!! each team get n/2 drives
     pointspread_max::Int = (num_drives/2) * 8
     pointspread_range::Int = pointspread_max*2 + 1
 	
@@ -65,28 +65,6 @@ params=ExtraParameters();
 𝒮=[[State(d, ps) for d=1:params.num_drives+1 for ps=-params.pointspread_max:params.pointspread_max]..., 
     params.win_state, params.lose_state, params.termination_state]
 
-#Only dependent on state
-# function R(s::State,a::Action)
-#     if s.drive == 25  # End game rewards
-#         if s == -1
-#             return -1000
-#         elseif s == 0
-#             return 200
-#         elseif s == 1
-#             return 1000
-#         else
-#             return s.pointspread
-#         end
-#     else  # Immediate rewards for kick/two
-#         if s.pointspread-s.pointspread==1 && a==kick
-#             return 1
-#         elseif s.pointspread-s.pointspread==2 && a==two
-#             return 2
-#         else
-#             return 0	
-#         end
-#     end
-# end	
 function R(s::State,a::Action)
 	return (s==params.win_state ? 1000 : 0) +
 	       (s==params.lose_state ? -1000 : 0) + 
@@ -203,7 +181,7 @@ mdp = QuickMDP(FieldGoal,
 	isterminal   = termination);
 
 
-solver=ValueIterationSolver(max_iterations=1000000)
+solver=ValueIterationSolver(max_iterations=10)
 println("Computing Value Iteration")
 tick()
 VI_policy=solve(solver,mdp)
@@ -218,13 +196,13 @@ q_mdp = QuickMDP(FieldGoal,
     initialstate = 𝒮,
     isterminal   = termination);
 
-q_learning_solver = QLearningSolver(n_episodes=10000,
+q_learning_solver = QLearningSolver(n_episodes=100,
 	learning_rate=0.3,
 	exploration_policy=EpsGreedyPolicy(q_mdp, 0.5),
 	verbose=false);
-    println("Computing Q-Learning Policy...")
+println("Computing Q-Learning Policy...")
 tick()
-q_learning_policy = solve(q_learning_solver, q_mdp);
+# q_learning_policy = solve(q_learning_solver, q_mdp);
 tock()
 
 
