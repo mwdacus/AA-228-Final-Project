@@ -10,8 +10,8 @@ df2=DataFrame(CSV.File("qlearn_simulation.csv"))
 df3=DataFrame(CSV.File("qlearn_simulation1.csv"))
 
 scatter(df1.games,df1.percentage,label="Value Iteration",)
-scatter!(df3.games,df3.percentage,label="Q-Learning")
-
+scatter!(df3.games,df3.percentage,label="Q-Learning(50)")
+scatter!(df2.games,df2.percentage,label="Q-Learning(100)")
 
 xlabel!("Number of Simulations (games)")
 ylabel!("Win probability")
