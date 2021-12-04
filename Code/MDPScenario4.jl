@@ -40,7 +40,7 @@ end
 	r_scoremade::Real = 2
 
     #State Space parameters
-    num_drives = 2  # Keep it even!!! each team get n/2 drives
+    num_drives = 4  # Keep it even!!! each team get n/2 drives
     pointspread_max::Int = (num_drives/2) * 8
     pointspread_range::Int = pointspread_max*2 + 1
 	
@@ -48,7 +48,7 @@ end
 	p_suc_kick::Beta  = Beta(9,1)
 	p_stop_kick::Beta = Beta(1,9)
 	p_suc_two::Beta   = Beta(9,1)
-	p_stop_two::Beta  = Beta(2,8)
+	p_stop_two::Beta  = Beta(1,9)
 
     p_suc_drive::Beta  = Beta(3,7)
     p_stop_drive::Beta = Beta(3,7)
@@ -65,31 +65,9 @@ params=ExtraParameters();
 𝒮=[[State(d, ps) for d=1:params.num_drives+1 for ps=-params.pointspread_max:params.pointspread_max]..., 
     params.win_state, params.lose_state, params.termination_state]
 
-#Only dependent on state
-# function R(s::State,a::Action)
-#     if s.drive == 25  # End game rewards
-#         if s == -1
-#             return -1000
-#         elseif s == 0
-#             return 200
-#         elseif s == 1
-#             return 1000
-#         else
-#             return s.pointspread
-#         end
-#     else  # Immediate rewards for kick/two
-#         if s.pointspread-s.pointspread==1 && a==kick
-#             return 1
-#         elseif s.pointspread-s.pointspread==2 && a==two
-#             return 2
-#         else
-#             return 0	
-#         end
-#     end
-# end	
 function R(s::State,a::Action)
-	return (s==params.win_state ? 10 : 0) +
-	       (s==params.lose_state ? -10 : 0) + 
+	return (s==params.win_state ? 1000 : 0) +
+	       (s==params.lose_state ? -1000 : 0) + 
 	       (a==kick && s.pointspread>0 ? 1*exp(-s.pointspread/15) : 0) +
 	       (a==kick && gcd(s.pointspread+1,7)==7 && s.pointspread<0 ? -2 : 0) + 
 	       (a==kick && s.pointspread<0 ? 1*exp(s.pointspread/15) : 0) +
@@ -111,7 +89,7 @@ function T(s::State,a::Action)
     p_away_drive = mean.(params.p_suc_drive)
 
     # Transition to single sink terminal state
-    if s.drive == params.num_drives+1
+    if s.drive == params.num_drives+1  # Game over, take pointspread and transition to win/lose
         if s.pointspread >= 0  # If winning/tied in Drive 25, transition to win state
             prob[end - 2] = 1
         elseif s.pointspread < 0
@@ -120,7 +98,7 @@ function T(s::State,a::Action)
         #     prob[end] = 1
         end
         return SparseCat(nextstate, prob)
-    elseif s.drive == params.num_drives+2
+    elseif s.drive == params.num_drives+2  # In win/lose state, transition to terminal state
         prob[end] = 1
         return SparseCat(nextstate, prob)
     end
@@ -150,7 +128,21 @@ function T(s::State,a::Action)
             prob[i[1] + one_drive + 0 - 0] = (1-p_home_two) * (1-p_away_drive)  # home miss two, away misses drive
             return SparseCat(nextstate,prob)
         end
-    # Away just made TD, takes action, then home goes for a drive
+    
+    elseif s.drive == params.num_drives
+        if a==kick
+            prob[i[1] + one_drive - 1] = p_away_kick  #   * p_home_drive      # away make kick, home makes drive
+            # prob[i[1] + one_drive - 1] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
+            prob[i[1] + one_drive - 0] = (1-p_away_kick)  #* p_home_drive      # away miss kick, home makes drive
+            # prob[i[1] + one_drive - 0] = (1-p_away_kick) * (1-p_home_drive)  # away miss kick, home misses drive
+            return SparseCat(nextstate,prob)
+        elseif a==two  # Opponent can't go for two
+            prob[end] = 1
+            return SparseCat(nextstate, prob)
+        end
+    
+    
+        # Away just made TD, takes action, then home goes for a drive
     elseif iseven(s.drive) && s!=params.termination_state # away team -- take stochastic 'kick' action, stochastic home drive
         if a==kick
             prob[i[1] + one_drive - 1 + 6] = p_away_kick     * p_home_drive      # away make kick, home makes drive
@@ -163,17 +155,7 @@ function T(s::State,a::Action)
             return SparseCat(nextstate, prob)
         end
     # Home can't score touchdown after last drive
-    elseif s.drive == params.num_drives
-        if a==kick
-            prob[i[1] + one_drive - 1] = p_away_kick     * p_home_drive      # away make kick, home makes drive
-            prob[i[1] + one_drive - 1] = p_away_kick     * (1-p_home_drive)  # away make kick, home misses drive
-            prob[i[1] + one_drive - 0] = (1-p_away_kick) * p_home_drive      # away miss kick, home makes drive
-            prob[i[1] + one_drive - 0] = (1-p_away_kick) * (1-p_home_drive)  # away miss kick, home misses drive
-            return SparseCat(nextstate,prob)
-        elseif a==two  # Opponent can't go for two
-            prob[end] = 1
-            return SparseCat(nextstate, prob)
-        end
+
     else
         # HOKAJ - redundant, delete later
         p[end] = 1
@@ -199,9 +181,10 @@ mdp = QuickMDP(FieldGoal,
 	isterminal   = termination);
 
 
-solver=ValueIterationSolver(max_iterations=1)
+solver=ValueIterationSolver(max_iterations=10)
+println("Computing Value Iteration")
 tick()
-# VI_policy=solve(solver,mdp)
+VI_policy=solve(solver,mdp)
 tock()
 
 q_mdp = QuickMDP(FieldGoal,
@@ -213,10 +196,17 @@ q_mdp = QuickMDP(FieldGoal,
     initialstate = 𝒮,
     isterminal   = termination);
 
-q_learning_solver = QLearningSolver(n_episodes=1000,
+q_learning_solver = QLearningSolver(n_episodes=100,
 	learning_rate=0.3,
 	exploration_policy=EpsGreedyPolicy(q_mdp, 0.5),
 	verbose=false);
+println("Computing Q-Learning Policy...")
 tick()
-q_learning_policy = solve(q_learning_solver, q_mdp);
+# q_learning_policy = solve(q_learning_solver, q_mdp);
 tock()
+
+
+######################
+# state_test = State(1,0)
+# action_test = kick
+# T_test = T(state_test, action_test)
