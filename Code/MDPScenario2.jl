@@ -118,7 +118,7 @@ q_mdp = QuickMDP(FieldGoal,
     initialstate = 𝒮,
     isterminal   = termination);
 
-q_learning_solver = QLearningSolver(n_episodes=50,
+q_learning_solver = QLearningSolver(n_episodes=100,
 	learning_rate=0.3,
 	exploration_policy=EpsGreedyPolicy(q_mdp, 0.5),
 	verbose=false);

@@ -98,7 +98,7 @@ end
 
 #function for determining average win percentage
 function WinPercent(sarsp)
-    (row,col)=size(sarsp)
+    (row,col)=size(sarsp);
     num_wins=zeros(Int(row/50))
     num_losses=zeros(Int(row/50))
     win_percentage=zeros(Int(row/50))
@@ -123,13 +123,13 @@ k=10000;
 for j in 1:k
     global sars′_VI
     global sars′_qlearn
-    #sars′_VI=simulate(sars′,mdp)
-    sars′_qlearn=simulate(sars′,q_mdp)
+    sars′_VI=simulate(sars′,mdp)
+    #sars′_qlearn=simulate(sars′,q_mdp)
 end
-#wins_VI=WinPercent(sars′_VI)
-wins_qlearn=WinPercent(sars′_qlearn)
-df=DataFrame(games=50:50:k,percentage=wins_qlearn)
-CSV.write("Data/Scenario2_Simulations/qlearn_simulation2.csv",df)
+wins_VI=WinPercent(sars′_VI)
+#wins_qlearn=WinPercent(sars′_qlearn)
+df=DataFrame(games=50:50:k,percentage=wins_VI)
+CSV.write("Data/Scenario2_Simulations/VI_2.csv",df)
 
 
 
